@@ -1,0 +1,11 @@
+{
+  "name": "telegram-archive-bot-js",
+  "version": "1.0.0",
+  "description": "Telegram Archive Bot - simple JS for Cloudflare Pages",
+  "main": "bot.js",
+  "scripts": {
+    "start": "echo 'Cloudflare Pages will run bot.js'"
+  },
+  "author": "",
+  "license": "MIT"
+}
