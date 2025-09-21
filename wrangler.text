@@ -1,3 +1,0 @@
-name = "telegram-archive-bot"
-compatibility_date = "2025-09-20"
-main = "worker.js"  # فایل Worker که Webhook را هندل می‌کند
