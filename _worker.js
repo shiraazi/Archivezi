@@ -8,12 +8,10 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    // مسیر Webhook
     if (url.pathname !== "/webhook") {
       return new Response("Not Found", { status: 404 });
     }
 
-    // فقط POST از تلگرام پردازش می‌شود
     if (request.method !== "POST") {
       return new Response("Bot running", { status: 200 });
     }
@@ -27,13 +25,14 @@ export default {
       let mainMessageId;
 
       // ارسال متن
-      if (msg.text) {
+      if (msg.text || msg.caption) {
+        const textToSend = escapeMarkdownV2(msg.text || msg.caption || " ");
         const resp = await fetch(`https://api.telegram.org/bot${env.TOKEN}/sendMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             chat_id: chatId,
-            text: escapeMarkdownV2(msg.text),
+            text: textToSend,
             parse_mode: "MarkdownV2"
           }),
         });
@@ -50,24 +49,7 @@ export default {
           body: JSON.stringify({
             chat_id: chatId,
             photo: fileId,
-            caption: escapeMarkdownV2(msg.caption || ''),
-            parse_mode: "MarkdownV2"
-          }),
-        });
-        const data = await resp.json();
-        mainMessageId = data.result.message_id;
-      }
-
-      // ارسال ویدیو
-      else if (msg.video) {
-        const fileId = msg.video.file_id;
-        const resp = await fetch(`https://api.telegram.org/bot${env.TOKEN}/sendVideo`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chat_id: chatId,
-            video: fileId,
-            caption: escapeMarkdownV2(msg.caption || ''),
+            caption: escapeMarkdownV2(msg.caption || ""),
             parse_mode: "MarkdownV2"
           }),
         });
@@ -84,7 +66,7 @@ export default {
           body: JSON.stringify({
             chat_id: chatId,
             document: fileId,
-            caption: escapeMarkdownV2(msg.caption || ''),
+            caption: escapeMarkdownV2(msg.caption || ""),
             parse_mode: "MarkdownV2"
           }),
         });
@@ -101,9 +83,8 @@ export default {
       if (msg.forward_from) {
         labels += `• Forwarded from: ${escapeMarkdownV2(msg.forward_from.username || msg.forward_from.first_name || 'Unknown')}\n`;
       }
-      if (msg.caption) labels += `• Caption: ${escapeMarkdownV2(msg.caption)}\n`;
 
-      // ارسال لیبل‌ها در پیام جداگانه، reply به پیام اصلی
+      // ارسال لیبل‌ها به صورت reply
       await fetch(`https://api.telegram.org/bot${env.TOKEN}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
