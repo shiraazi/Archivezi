@@ -12,7 +12,38 @@ export default {
       const msg = update.message;
       if (!msg) return new Response("No message", { status: 200 });
 
-      const chatId = "@archivzi"; // کانال مقصد
+      const chatId = "@archivzi";
+
+      // ارسال پیام اصلی
+      let mainMessageId;
+      if (msg.text) {
+        const resp = await fetch(`https://api.telegram.org/bot${env.TOKEN}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: escapeMarkdownV2(msg.text),
+            parse_mode: "MarkdownV2"
+          }),
+        });
+        const data = await resp.json();
+        mainMessageId = data.result.message_id;
+      } else if (msg.photo) {
+        const fileId = msg.photo[msg.photo.length - 1].file_id;
+        const resp = await fetch(`https://api.telegram.org/bot${env.TOKEN}/sendPhoto`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: chatId,
+            photo: fileId,
+            caption: escapeMarkdownV2(msg.caption || ''),
+            parse_mode: "MarkdownV2"
+          }),
+        });
+        const data = await resp.json();
+        mainMessageId = data.result.message_id;
+      }
+      // می‌توان مشابه ویدیو و فایل اضافه کرد
 
       // ساخت لیبل‌ها
       let labels = `📌 *Info:*\n`;
@@ -23,62 +54,19 @@ export default {
       if (msg.forward_from) {
         labels += `• Forwarded from: ${escapeMarkdownV2(msg.forward_from.username || msg.forward_from.first_name || 'Unknown')}\n`;
       }
-      if (msg.caption) {
-        labels += `• Caption: ${escapeMarkdownV2(msg.caption)}\n`;
-      }
+      if (msg.caption) labels += `• Caption: ${escapeMarkdownV2(msg.caption)}\n`;
 
-      // متن
-      if (msg.text) {
-        await fetch(`https://api.telegram.org/bot${env.TOKEN}/sendMessage`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chat_id: chatId,
-            text: `${escapeMarkdownV2(msg.text)}\n\n${labels}`,
-            parse_mode: "MarkdownV2"
-          }),
-        });
-      }
-      // عکس
-      else if (msg.photo) {
-        const fileId = msg.photo[msg.photo.length - 1].file_id;
-        await fetch(`https://api.telegram.org/bot${env.TOKEN}/sendPhoto`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chat_id: chatId,
-            photo: fileId,
-            caption: `${escapeMarkdownV2(msg.caption || '')}\n\n${labels}`,
-            parse_mode: "MarkdownV2"
-          }),
-        });
-      }
-      // ویدیو
-      else if (msg.video) {
-        await fetch(`https://api.telegram.org/bot${env.TOKEN}/sendVideo`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chat_id: chatId,
-            video: msg.video.file_id,
-            caption: `${escapeMarkdownV2(msg.caption || '')}\n\n${labels}`,
-            parse_mode: "MarkdownV2"
-          }),
-        });
-      }
-      // فایل
-      else if (msg.document) {
-        await fetch(`https://api.telegram.org/bot${env.TOKEN}/sendDocument`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chat_id: chatId,
-            document: msg.document.file_id,
-            caption: `${escapeMarkdownV2(msg.caption || '')}\n\n${labels}`,
-            parse_mode: "MarkdownV2"
-          }),
-        });
-      }
+      // ارسال لیبل‌ها به عنوان پیام جداگانه
+      await fetch(`https://api.telegram.org/bot${env.TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: labels,
+          parse_mode: "MarkdownV2",
+          reply_to_message_id: mainMessageId
+        }),
+      });
 
       return new Response("OK");
     } catch (err) {
