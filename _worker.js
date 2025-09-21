@@ -1,3 +1,4 @@
+// Helper: فرار دادن کاراکترهای MarkdownV2
 function escapeMarkdownV2(text) {
   if (!text) return '';
   return text.replace(/([_*\[\]()~`>#+-=|{}.!])/g, '\\$1');
@@ -5,7 +6,17 @@ function escapeMarkdownV2(text) {
 
 export default {
   async fetch(request, env) {
-    if (request.method !== "POST") return new Response("Bot running", { status: 200 });
+    const url = new URL(request.url);
+
+    // مسیر Webhook
+    if (url.pathname !== "/webhook") {
+      return new Response("Not Found", { status: 404 });
+    }
+
+    // فقط POST از تلگرام پردازش می‌شود
+    if (request.method !== "POST") {
+      return new Response("Bot running", { status: 200 });
+    }
 
     try {
       const update = await request.json();
@@ -15,7 +26,7 @@ export default {
       const chatId = "@archivzi"; // کانال مقصد
       let mainMessageId;
 
-      // پیام متن
+      // ارسال متن
       if (msg.text) {
         const resp = await fetch(`https://api.telegram.org/bot${env.TOKEN}/sendMessage`, {
           method: "POST",
@@ -30,7 +41,7 @@ export default {
         mainMessageId = data.result.message_id;
       }
 
-      // عکس
+      // ارسال عکس
       else if (msg.photo) {
         const fileId = msg.photo[msg.photo.length - 1].file_id;
         const resp = await fetch(`https://api.telegram.org/bot${env.TOKEN}/sendPhoto`, {
@@ -47,7 +58,7 @@ export default {
         mainMessageId = data.result.message_id;
       }
 
-      // ویدیو
+      // ارسال ویدیو
       else if (msg.video) {
         const fileId = msg.video.file_id;
         const resp = await fetch(`https://api.telegram.org/bot${env.TOKEN}/sendVideo`, {
@@ -64,7 +75,7 @@ export default {
         mainMessageId = data.result.message_id;
       }
 
-      // فایل
+      // ارسال فایل
       else if (msg.document) {
         const fileId = msg.document.file_id;
         const resp = await fetch(`https://api.telegram.org/bot${env.TOKEN}/sendDocument`, {
@@ -92,7 +103,7 @@ export default {
       }
       if (msg.caption) labels += `• Caption: ${escapeMarkdownV2(msg.caption)}\n`;
 
-      // ارسال لیبل‌ها در پیام جداگانه و reply به پیام اصلی
+      // ارسال لیبل‌ها در پیام جداگانه، reply به پیام اصلی
       await fetch(`https://api.telegram.org/bot${env.TOKEN}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
