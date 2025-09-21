@@ -3,14 +3,30 @@ export default {
     if (request.method === "POST") {
       try {
         const update = await request.json();
-        // اینجا می‌تونی bot.js رو صدا بزنی و پیام رو به کانال بفرستی
+
+        // بررسی اینکه پیام وجود دارد
+        if (update.message) {
+          const chatId = update.message.chat.id;
+          const messageId = update.message.message_id;
+
+          // فوروارد پیام به کانال @archivzi
+          await fetch(`https://api.telegram.org/bot${env.TOKEN}/forwardMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: "@archivzi",
+              from_chat_id: chatId,
+              message_id: messageId
+            }),
+          });
+        }
+
         return new Response("OK", { status: 200 });
       } catch (err) {
         return new Response("Error: " + err.message, { status: 500 });
       }
     }
 
-    // برای تست در مرورگر
-    return new Response("Telegram Archive Bot Worker Running!", { status: 200 });
+    return new Response("Bot is running!", { status: 200 });
   }
 };
