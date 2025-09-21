@@ -8,18 +8,44 @@ export default {
 
         if (update.message) {
           const chatId = update.message.chat.id;
-          const messageId = update.message.message_id;
+          const msg = update.message;
 
-          // ریپست پیام به کانال @archivzi
-          await fetch(`https://api.telegram.org/bot${env.TOKEN}/forwardMessage`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              chat_id: "@archivzi",
-              from_chat_id: chatId,
-              message_id: messageId
-            }),
-          });
+          // ساخت متن لیبل‌ها
+          let labels = `📌 **Info:**\n`;
+          labels += `• From: ${msg.from?.username || 'Unknown'}\n`;
+          labels += `• Chat ID: ${chatId}\n`;
+          labels += `• Message ID: ${msg.message_id}\n`;
+          labels += `• Date: ${new Date(msg.date * 1000).toLocaleString()}\n`;
+          if (msg.forward_from) {
+            labels += `• Forwarded from: ${msg.forward_from.username || 'Unknown'}\n`;
+          }
+
+          // ارسال پست جدید به کانال
+          if (msg.text) {
+            // متن پیام + لیبل‌ها
+            await fetch(`https://api.telegram.org/bot${env.TOKEN}/sendMessage`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chat_id: "@archivzi",
+                text: `${msg.text}\n\n${labels}`,
+                parse_mode: "Markdown"
+              }),
+            });
+          } else if (msg.photo) {
+            // اگر عکس بود
+            const fileId = msg.photo[msg.photo.length - 1].file_id;
+            await fetch(`https://api.telegram.org/bot${env.TOKEN}/sendPhoto`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chat_id: "@archivzi",
+                photo: fileId,
+                caption: labels,
+                parse_mode: "Markdown"
+              }),
+            });
+          }
         }
 
         return new Response("OK");
