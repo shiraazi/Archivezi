@@ -12,10 +12,10 @@ export default {
       const msg = update.message;
       if (!msg) return new Response("No message", { status: 200 });
 
-      const chatId = "@archivzi";
-
-      // ارسال پیام اصلی
+      const chatId = "@archivzi"; // کانال مقصد
       let mainMessageId;
+
+      // پیام متن
       if (msg.text) {
         const resp = await fetch(`https://api.telegram.org/bot${env.TOKEN}/sendMessage`, {
           method: "POST",
@@ -28,7 +28,10 @@ export default {
         });
         const data = await resp.json();
         mainMessageId = data.result.message_id;
-      } else if (msg.photo) {
+      }
+
+      // عکس
+      else if (msg.photo) {
         const fileId = msg.photo[msg.photo.length - 1].file_id;
         const resp = await fetch(`https://api.telegram.org/bot${env.TOKEN}/sendPhoto`, {
           method: "POST",
@@ -43,7 +46,40 @@ export default {
         const data = await resp.json();
         mainMessageId = data.result.message_id;
       }
-      // می‌توان مشابه ویدیو و فایل اضافه کرد
+
+      // ویدیو
+      else if (msg.video) {
+        const fileId = msg.video.file_id;
+        const resp = await fetch(`https://api.telegram.org/bot${env.TOKEN}/sendVideo`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: chatId,
+            video: fileId,
+            caption: escapeMarkdownV2(msg.caption || ''),
+            parse_mode: "MarkdownV2"
+          }),
+        });
+        const data = await resp.json();
+        mainMessageId = data.result.message_id;
+      }
+
+      // فایل
+      else if (msg.document) {
+        const fileId = msg.document.file_id;
+        const resp = await fetch(`https://api.telegram.org/bot${env.TOKEN}/sendDocument`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: chatId,
+            document: fileId,
+            caption: escapeMarkdownV2(msg.caption || ''),
+            parse_mode: "MarkdownV2"
+          }),
+        });
+        const data = await resp.json();
+        mainMessageId = data.result.message_id;
+      }
 
       // ساخت لیبل‌ها
       let labels = `📌 *Info:*\n`;
@@ -56,7 +92,7 @@ export default {
       }
       if (msg.caption) labels += `• Caption: ${escapeMarkdownV2(msg.caption)}\n`;
 
-      // ارسال لیبل‌ها به عنوان پیام جداگانه
+      // ارسال لیبل‌ها در پیام جداگانه و reply به پیام اصلی
       await fetch(`https://api.telegram.org/bot${env.TOKEN}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
