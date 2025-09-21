@@ -1,16 +1,16 @@
-import { handleRequest } from './bot.js';
-
 export default {
   async fetch(request, env) {
-    if (request.method !== 'POST') {
-      return new Response('Telegram Archive Bot Worker Running!');
+    if (request.method === "POST") {
+      try {
+        const update = await request.json();
+        // اینجا می‌تونی bot.js رو صدا بزنی و پیام رو به کانال بفرستی
+        return new Response("OK", { status: 200 });
+      } catch (err) {
+        return new Response("Error: " + err.message, { status: 500 });
+      }
     }
 
-    const update = await request.json();
-    const result = await handleRequest(update, env);
-
-    return new Response(JSON.stringify(result), {
-      headers: { 'Content-Type': 'application/json' }
-    });
+    // برای تست در مرورگر
+    return new Response("Telegram Archive Bot Worker Running!", { status: 200 });
   }
 };
