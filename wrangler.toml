@@ -1,3 +1,8 @@
-name = "arshivsaz"
-main = "_worker.js"
+name = "arshivsaz-bot"
 compatibility_date = "2025-09-21"
+account_id = "shirazi.georgia"  # اکانت Cloudflare شما
+workers_dev = true
+
+[vars]
+TOKEN = "8334211614:AAGzxYUO-POELjy0rODt8rrC5GqymTzL9k"
+CHANNEL_ID = "@archivzi"
