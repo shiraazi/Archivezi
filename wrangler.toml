@@ -1,7 +1,9 @@
 name = "arshivsaz-bot"
 compatibility_date = "2025-09-21"
-account_id = "shirazi.georgia"  # اکانت Cloudflare شما
+account_id = "shirazi.georgia"
 workers_dev = true
+
+main = "_worker.js"  # مسیر فایل Worker
 
 [vars]
 TOKEN = "8334211614:AAGzxYUO-POELjy0rODt8rrC5GqymTzL9k"
