@@ -1,102 +1,53 @@
-// Helper: فرار دادن کاراکترهای MarkdownV2
-function escapeMarkdownV2(text) {
-  if (!text) return '';
-  return text.replace(/([_*\[\]()~`>#+-=|{}.!])/g, '\\$1');
-}
-
+// _worker.js
 export default {
   async fetch(request, env) {
-    const url = new URL(request.url);
-
-    if (url.pathname !== "/webhook") {
-      return new Response("Not Found", { status: 404 });
-    }
-
-    if (request.method !== "POST") {
-      return new Response("Bot running", { status: 200 });
-    }
-
     try {
+      const url = new URL(request.url);
+
+      // فقط مسیر /webhook قبول شود
+      if (url.pathname !== "/webhook" || request.method !== "POST") {
+        return new Response("Not Found", { status: 404 });
+      }
+
       const update = await request.json();
-      const msg = update.message;
-      if (!msg) return new Response("No message", { status: 200 });
 
-      const chatId = "@archivzi"; // کانال مقصد
-      let mainMessageId;
+      // فقط پیام‌ها
+      if (!update.message) return new Response("No message", { status: 200 });
 
-      // ارسال متن
-      if (msg.text || msg.caption) {
-        const textToSend = escapeMarkdownV2(msg.text || msg.caption || " ");
-        const resp = await fetch(`https://api.telegram.org/bot${env.TOKEN}/sendMessage`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chat_id: chatId,
-            text: textToSend,
-            parse_mode: "MarkdownV2"
-          }),
-        });
-        const data = await resp.json();
-        mainMessageId = data.result.message_id;
-      }
+      const chatId = update.message.chat.id;
+      const messageId = update.message.message_id;
 
-      // ارسال عکس
-      else if (msg.photo) {
-        const fileId = msg.photo[msg.photo.length - 1].file_id;
-        const resp = await fetch(`https://api.telegram.org/bot${env.TOKEN}/sendPhoto`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chat_id: chatId,
-            photo: fileId,
-            caption: escapeMarkdownV2(msg.caption || ""),
-            parse_mode: "MarkdownV2"
-          }),
-        });
-        const data = await resp.json();
-        mainMessageId = data.result.message_id;
-      }
+      // اطلاعات لیبل‌ها
+      const fromUser = update.message.from ? update.message.from.username || update.message.from.first_name : "Unknown";
+      const forwardDate = new Date(update.message.date * 1000).toLocaleString();
+      const originalChat = update.message.chat.title || update.message.chat.username || chatId;
 
-      // ارسال فایل
-      else if (msg.document) {
-        const fileId = msg.document.file_id;
-        const resp = await fetch(`https://api.telegram.org/bot${env.TOKEN}/sendDocument`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chat_id: chatId,
-            document: fileId,
-            caption: escapeMarkdownV2(msg.caption || ""),
-            parse_mode: "MarkdownV2"
-          }),
-        });
-        const data = await resp.json();
-        mainMessageId = data.result.message_id;
-      }
+      // متن لیبل‌ها
+      const labels = `---\n📝 From: ${fromUser}\n📅 Date: ${forwardDate}\n💬 From Chat: ${originalChat}\n🔗 Msg ID: ${messageId}`;
 
-      // ساخت لیبل‌ها
-      let labels = `📌 *Info:*\n`;
-      labels += `• From: ${escapeMarkdownV2(msg.from?.username || msg.from?.first_name || 'Unknown')}\n`;
-      labels += `• Chat ID: ${msg.chat.id}\n`;
-      labels += `• Message ID: ${msg.message_id}\n`;
-      labels += `• Date: ${new Date(msg.date * 1000).toLocaleString()}\n`;
-      if (msg.forward_from) {
-        labels += `• Forwarded from: ${escapeMarkdownV2(msg.forward_from.username || msg.forward_from.first_name || 'Unknown')}\n`;
-      }
+      // 1️⃣ ریپست پیام اصلی به کانال
+      await fetch(`https://api.telegram.org/bot${env.TOKEN}/forwardMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: env.CHANNEL_ID, // جایگزین با آیدی کانال numeric یا @username
+          from_chat_id: chatId,
+          message_id: messageId
+        })
+      });
 
-      // ارسال لیبل‌ها به صورت reply
+      // 2️⃣ ارسال لیبل‌ها زیر پیام به صورت متن جدا
       await fetch(`https://api.telegram.org/bot${env.TOKEN}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          chat_id: chatId,
+          chat_id: env.CHANNEL_ID,
           text: labels,
-          parse_mode: "MarkdownV2",
-          reply_to_message_id: mainMessageId
-        }),
+          parse_mode: "Markdown"
+        })
       });
 
-      return new Response("OK");
+      return new Response("OK", { status: 200 });
     } catch (err) {
       return new Response("Error: " + err.message, { status: 500 });
     }
